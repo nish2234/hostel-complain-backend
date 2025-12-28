@@ -1,29 +1,26 @@
-# Stage 1: Build
-FROM eclipse-temurin:17-jdk-alpine AS build
+# Multi-stage build for optimized Spring Boot application
+FROM maven:3.9-eclipse-temurin-17-alpine AS build
+
+# Set working directory
 WORKDIR /app
 
-# Copy Maven wrapper and pom.xml
-COPY mvnw .
-COPY .mvn .mvn
+# Copy pom.xml and download dependencies (cached layer)
 COPY pom.xml .
-
-# Make mvnw executable
-RUN chmod +x mvnw
-
-# Download dependencies (cached layer)
-RUN ./mvnw dependency:go-offline -B
+RUN mvn dependency:go-offline -B
 
 # Copy source code
-COPY src src
+COPY src ./src
 
-# Build the application
-RUN ./mvnw clean package -DskipTests
+# Build the application (skip tests for faster builds)
+RUN mvn clean package -DskipTests
 
-# Stage 2: Run
+# Runtime stage - smaller image
 FROM eclipse-temurin:17-jre-alpine
+
+# Set working directory
 WORKDIR /app
 
-# Copy the built jar from build stage
+# Copy jar from build stage
 COPY --from=build /app/target/hostel-complaint-0.0.1-SNAPSHOT.jar app.jar
 
 # Expose port
